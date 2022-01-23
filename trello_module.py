@@ -32,21 +32,23 @@ class TrelloModule:
         boards_json = self.get_user_boards()
         for board in boards_json:
             if board["name"] in boards_list:
+                board_name = board["name"].replace(" ", "_").lower()
                 print("\tFound : ", board["name"])
-                boards_dict.update({board["name"]: board["id"]})
+                boards_dict.update({board_name: board["id"]})
                 boards_list.remove(board["name"])
 
         if not boards_list:
             return boards_dict
         endpoint = "1/boards/"
         request_url = self.url + endpoint
-        for board_name in boards_list:
+        for trello_board_name in boards_list:
             payload = self.payload.copy()
-            payload.update({"name": board_name, "defaultLists": "false"})
+            payload.update({"name": trello_board_name, "defaultLists": "false"})
             response = requests.post(request_url, data=payload)
             self.validate_response_status(response)
-            print(f"\t{board_name} Board Created!!")
+            print(f"\t{trello_board_name}  Created!!")
             board_id = response.json()["id"]
+            board_name = trello_board_name.replace(" ", "_").lower()
             boards_dict.update({board_name: board_id})
         return boards_dict
 
@@ -62,23 +64,10 @@ class TrelloModule:
             ]
         )
 
-    def get_or_create_lists(self, board_id, trello_list_to_create):
-        trello_lists_on_board = self.get_lists_on_board(board_id)
-
-        trello_lists_dict = {}
-        for trello_list_name in trello_lists_on_board.keys():
-            if trello_list_name in trello_list_to_create:
-                print(f"\tFound the list {trello_list_name}")
-                trello_list_to_create.remove(trello_list_name)
-                trello_lists_dict.update(
-                    {trello_list_name: trello_lists_on_board[trello_list_name]}
-                )
-
-        if not trello_list_to_create:
-            return trello_lists_dict
-
+    def create_lists_on_board(self, board_id, trello_list_to_create):
         endpoint = f"1/boards/{board_id}/lists"
         request_url = self.url + endpoint
+        created_list_dict = {}
         for list_name in trello_list_to_create:
             payload = self.payload.copy()
             payload.update({"name": list_name, "pos": "bottom"})
@@ -86,5 +75,38 @@ class TrelloModule:
             self.validate_response_status(response)
             response_json = response.json()
             print(f"\tCreated the list : {list_name}")
-            trello_lists_dict.update({response_json["name"]: response_json["id"]})
-        return trello_lists_dict
+            created_list_dict.update({response_json["name"]: response_json["id"]})
+        return created_list_dict
+
+    def get_labels_on_board(self, board_id):
+        endpoint = f"1/boards/{board_id}/labels"
+        request_url = self.url + endpoint
+        response = requests.get(request_url, data=self.payload)
+        self.validate_response_status(response)
+        return dict(
+            [
+                (label_details["color"], label_details["id"])
+                for label_details in response.json()
+            ]
+        )
+
+    def create_label_on_board(self, board_id, label_name, label_color):
+        endpoint = f"1/boards/{board_id}/labels"
+        request_url = self.url + endpoint
+        payload = self.payload.copy()
+        payload.update({"name": label_name, "color": label_color})
+        response = requests.post(request_url, data=payload)
+        self.validate_response_status(response)
+        response_json = response.json()
+        print(response_json)
+
+    def update_label(self, label_id, label_name, label_color):
+        # PUT /1/labels/{id}
+        endpoint = f"1/labels/{label_id}"
+        request_url = self.url + endpoint
+        payload = self.payload.copy()
+        payload.update({"name": label_name, "color": label_color})
+        response = requests.put(request_url, data=payload)
+        self.validate_response_status(response)
+        response_json = response.json()
+        print(response_json)
