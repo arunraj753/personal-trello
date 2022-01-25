@@ -79,16 +79,20 @@ class TrelloModule:
         return created_list_dict
 
     def get_labels_on_board(self, board_id):
+        response_json = self.get_label_details_on_board(board_id)
+        return dict(
+            [
+                (label_details["color"], label_details["id"])
+                for label_details in response_json
+            ]
+        )
+
+    def get_label_details_on_board(self, board_id):
         endpoint = f"1/boards/{board_id}/labels"
         request_url = self.url + endpoint
         response = requests.get(request_url, data=self.payload)
         self.validate_response_status(response)
-        return dict(
-            [
-                (label_details["color"], label_details["id"])
-                for label_details in response.json()
-            ]
-        )
+        return response.json()
 
     def create_label_on_board(self, board_id, label_name, label_color):
         endpoint = f"1/boards/{board_id}/labels"
@@ -97,8 +101,8 @@ class TrelloModule:
         payload.update({"name": label_name, "color": label_color})
         response = requests.post(request_url, data=payload)
         self.validate_response_status(response)
-        response_json = response.json()
-        print(response_json)
+        print(f"\tCreated label: {label_name} - {label_color}")
+        return response.json()
 
     def update_label(self, label_id, label_name, label_color):
         # PUT /1/labels/{id}
@@ -109,4 +113,49 @@ class TrelloModule:
         response = requests.put(request_url, data=payload)
         self.validate_response_status(response)
         response_json = response.json()
-        print(response_json)
+        print(f"\tUpdated label: {response_json['color']} - {response_json['name']}")
+        return response.json()
+
+    def get_cards_in_a_list(self, list_id):
+        endpoint = f"1/lists/{list_id}/cards"
+        request_url = self.url + endpoint
+        response = requests.get(request_url, data=self.payload)
+        self.validate_response_status(response)
+        response_json = response.json()
+        return response_json
+
+    def create_card(self, list_id, card_name, desc=False):
+        endpoint = "1/cards"
+        request_url = self.url + endpoint
+        payload = self.payload.copy()
+        payload.update({"idList": list_id, "name": card_name})
+        if desc:
+            payload.update({"desc": desc})
+        response = requests.post(request_url, data=payload)
+        self.validate_response_status(response)
+        response_json = response.json()
+        print(
+            f"New Trello Card created with title:{card_name} & id: {response_json['id']}"
+        )
+        return response_json["id"]
+
+    def update_card(self, card_id, card_name=False, desc=False, list_id=False):
+        endpoint = f"1/cards/{card_id}"
+        request_url = self.url + endpoint
+        payload = self.payload.copy()
+        if card_name:
+            payload.update({"name": card_name})
+        if list_id:
+            payload.update({"idList": list_id})
+        if desc:
+            payload.update({"desc": desc})
+        response = requests.put(request_url, data=payload)
+        self.validate_response_status(response)
+        return response.json()
+
+    def add_label_to_card(self, card_id, label_id):
+        endpoint = f"1/cards/{card_id}/idLabels"
+        request_url = self.url + endpoint
+        payload = self.payload.copy()
+        response = requests.post(request_url, data=payload)
+        # POST /1/cards/{id}/idLabels
