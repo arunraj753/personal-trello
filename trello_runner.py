@@ -30,12 +30,17 @@ tester_baord_lists_required = [
     "On Hold Sprints",
     "Completed Sprints",
 ]
+dev_and_coder_dict = {
+    "Committed Backlogs": "Committed",
+    "Upcoming Sprints": "Committed",
+    "Current Sprint": "Developing",
+    "Out For Testing Sprints": "Testing",
+    "On Hold Sprints": "On Hold",
+    "Completed Sprints": "Developed",
+}
+
 ready_to_commit = "Ready To Commit"
-# trello_lists = {
-#     "the_coder_board_lists": the_coder_board_lists,
-#     "the_developer_board_lists": the_developer_baord_lists,
-#     "the_tester_board_lists": the_tester_baord_lists,
-# }
+
 trello_ = TrelloModule()
 trello_api_key = os.environ.get("TRELLO_API_KEY")
 trello_api_token = os.environ.get("TRELLO_API_TOKEN")
@@ -48,6 +53,8 @@ tester_board_id = trello_boards_dict["the_tester_board"]
 
 coder_obj = CoderBoard(coder_board_id, trello_)
 dev_obj = DeveloperBoard(developer_board_id, trello_)
+
+
 coder_obj.trello_list_operations()
 coder_obj.get_or_create_labels()
 coder_obj.project_cards()
@@ -56,11 +63,14 @@ coder_obj.project_cards()
     labels_for_dev_board,
 ) = coder_obj.fetch_backlogs_trello_list()
 print("Fetched 'coder_board_backlog_lists' and 'labels_for_dev_board'")
+
+
 dev_obj.trello_list_operations()
 dev_board_labels_dict = dev_obj.get_or_create_labels(list(set(labels_for_dev_board)))
-print(dev_board_labels_dict)
-exit(0)
+
 cards_to_create_in_dev_backlog = []
+dev_board_backlog_id = dev_obj.lists_on_board_dict["Committed Backlogs"]
+
 for list_name in coderboard_backlog_lists_dict.keys():
     list_id = coderboard_backlog_lists_dict[list_name]
     backlog_cards = trello_.get_cards_in_a_list(list_id)
@@ -68,32 +78,65 @@ for list_name in coderboard_backlog_lists_dict.keys():
         card_labels = card["labels"]
         for label in card_labels:
             if label["name"] == ready_to_commit:
-                cards_to_create_in_dev_backlog.append(
-                    {
-                        "name": card["name"],
-                        "id": card["id"],
-                        "label": list_name.split("-Backlogs")[0],
-                    }
+                project_name = list_name.split("-Backlogs")[0]
+                project_commited_list_name = project_name + "-Committed Backlogs"
+                created_card_id = trello_.create_card(
+                    dev_board_backlog_id, card["name"]
+                )
+                trello_.add_label_to_card(
+                    created_card_id,
+                    dev_board_labels_dict[project_name],
+                )
+                trello_.update_card(
+                    card["id"],
+                    list_id=coder_obj.lists_on_board_dict[project_commited_list_name],
+                    desc=f"linked_card:{created_card_id}",
+                    labels_id=[coder_obj.labels["orange"]],
                 )
 
-print(cards_to_create_in_dev_backlog)
-dev_board_backlog_id = dev_obj.lists_on_board_dict["Committed Backlogs"]
-print(dev_obj.lists_on_board_dict)
+dev_board_cards = trello_.get_cards_on_a_board(developer_board_id)
 
-for card in cards_to_create_in_dev_backlog:
-    print(card)
-    created_card_id = trello_.create_card(dev_board_backlog_id, card["name"])
+dev_board_cards_dict = {}
+# dev_board_cards_dict format {card_id : card_list_id}
+for card in dev_board_cards:
+    dev_board_cards_dict.update({card["id"]: card["idList"]})
+# print(all_cards)
+# for card in dev_board_cards:
+#     print(card, "\n")
+dev_board_lists = trello_.get_lists_on_board(developer_board_id)
+dev_board_lists_dict = {}
+# Format {'list_id': '61efaf75b5f1af86af758061', 'list_name': 'Committed Backlogs'}
+for trello_list in dev_board_lists:
+    dev_board_lists_dict.update({trello_list["id"]: trello_list["name"]})
 
 
-# developer_obj.trello_list_operations()ed
+coder_board_cards = trello_.get_cards_on_a_board(coder_board_id)
+# print("coder_obj.lists_on_board_dict\n", coder_obj.lists_on_board_dict)
+
+for card in coder_board_cards:
+    card_id = card["id"]
+    desc = card["desc"]
+    if desc:
+        linked_card_ = desc.split("linked_card:")
+        if len(linked_card_) == 2:
+            linked_card_id = linked_card_[1]
+            linked_card_list_id = dev_board_cards_dict.get(linked_card_id, None)
+            if linked_card_list_id:
+                list_name = dev_board_lists_dict.get(linked_card_list_id, None)
+                if list_name:
+                    label_name = dev_and_coder_dict[list_name]
+                    # print(label_name)
+                    label_color = coder_obj.board_labels[label_name]
+                    print(
+                        label_color,
+                        label_name,
+                        list_name,
+                        coder_obj.labels[label_color],
+                    )
+                    trello_.update_card(
+                        card_id,
+                        labels_id=[coder_obj.labels[label_color]],
+                    )
 
 
-# trello_lists_id_dict = {}
-# for key in trello_lists.keys():
-#     board_name = key.replace("_lists", "").replace("_", " ").title()
-#     board_id = trello_boards_dict[board_name]
-#     required_lists_on_board = trello_lists[key]
-#     temp_lists_id_dict = tr.get_or_create_lists(board_id, required_lists_on_board)
-#     trello_lists_id_dict.update({key: temp_lists_id_dict})
-#     print(f"Lists completed for {key}")
-# print("Lists section completed")
+print("To commit cards from the coder board are commited")

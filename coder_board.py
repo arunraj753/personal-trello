@@ -19,7 +19,10 @@ class CoderBoard:
 
     def trello_list_operations(self):
         print("Starting The Coder Board Operations")
-        lists_on_board_dict = self.tr_obj.get_lists_on_board(self.board_id)
+        response_json = self.tr_obj.get_lists_on_board(self.board_id)
+        lists_on_board_dict = dict(
+            [(trello_list["name"], trello_list["id"]) for trello_list in response_json]
+        )
         board_lists_to_create = [
             list_name
             for list_name in self.required_lists
@@ -35,7 +38,31 @@ class CoderBoard:
 
     def get_or_create_labels(self):
         self.labels = self.tr_obj.get_labels_on_board(self.board_id)
-        self.tr_obj.update_label(self.labels["green"], "Ready To Commit", "green")
+        print(self.labels)
+        self.board_labels = {
+            "Ready To Commit": "red",
+            "Committed": "orange",
+            "On Hold": "yellow",
+            "Developing": "blue",
+            "Testing": "purple",
+            "Developed": "green",
+        }
+        for label in self.board_labels.keys():
+            self.tr_obj.update_label(
+                self.labels[self.board_labels[label]], label, self.board_labels[label]
+            )
+
+        # board_labels = [
+        #     ("red", "Ready To Commit"),
+        #     ("orange", "Committed"),
+        #     ("yellow", "On Hold"),
+        #     ("blue", "Developing"),
+        #     ("purple", "Testing"),
+        #     ("green", "Developed"),
+        # ]
+        # for label in board_labels:
+        #     self.tr_obj.update_label(self.labels[label[0]], label[1], label[0])
+
         print("Label Operations completed for Coder Board")
 
     def project_cards(self):
@@ -64,9 +91,10 @@ class CoderBoard:
             print("Project cards created")
         else:
             print("All project cards exists")
-        self.lists_on_board_dict = self.tr_obj.get_lists_on_board(self.board_id)
-
-        # self.tr_obj.create_label_on_board(self.board_id, "Developed", "green")
+        response_json = self.tr_obj.get_lists_on_board(self.board_id)
+        self.lists_on_board_dict = dict(
+            [(trello_list["name"], trello_list["id"]) for trello_list in response_json]
+        )
 
     def fetch_not_commited_cards(self):
         self.backlog_trello_lists_dict = self.fetch_backlogs_trello_list()

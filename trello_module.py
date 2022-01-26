@@ -57,6 +57,7 @@ class TrelloModule:
         request_url = self.url + endpoint
         response = requests.get(request_url, data=self.payload)
         self.validate_response_status(response)
+        return response.json()
         return dict(
             [
                 (trello_list["name"], trello_list["id"])
@@ -124,6 +125,14 @@ class TrelloModule:
         response_json = response.json()
         return response_json
 
+    def get_cards_on_a_board(self, board_id):
+        endpoint = f"1/boards/{board_id}/cards"
+        request_url = self.url + endpoint
+        payload = self.payload.copy()
+        response = requests.get(request_url, data=payload)
+        response_json = response.json()
+        return response_json
+
     def create_card(self, list_id, card_name, desc=False):
         endpoint = "1/cards"
         request_url = self.url + endpoint
@@ -139,7 +148,9 @@ class TrelloModule:
         )
         return response_json["id"]
 
-    def update_card(self, card_id, card_name=False, desc=False, list_id=False):
+    def update_card(
+        self, card_id, card_name=False, desc=False, list_id=False, labels_id=False
+    ):
         endpoint = f"1/cards/{card_id}"
         request_url = self.url + endpoint
         payload = self.payload.copy()
@@ -149,6 +160,8 @@ class TrelloModule:
             payload.update({"idList": list_id})
         if desc:
             payload.update({"desc": desc})
+        if labels_id:
+            payload.update({"idLabels": labels_id})
         response = requests.put(request_url, data=payload)
         self.validate_response_status(response)
         return response.json()
@@ -157,5 +170,9 @@ class TrelloModule:
         endpoint = f"1/cards/{card_id}/idLabels"
         request_url = self.url + endpoint
         payload = self.payload.copy()
+        payload.update({"value": label_id})
         response = requests.post(request_url, data=payload)
+        self.validate_response_status(response)
+        return response.json()
+
         # POST /1/cards/{id}/idLabels
