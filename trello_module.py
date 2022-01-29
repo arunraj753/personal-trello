@@ -149,7 +149,13 @@ class TrelloModule:
         return response_json["id"]
 
     def update_card(
-        self, card_id, card_name=False, desc=False, list_id=False, labels_id=False
+        self,
+        card_id,
+        card_name=False,
+        desc=False,
+        list_id=False,
+        board_id=False,
+        labels_id=False,
     ):
         endpoint = f"1/cards/{card_id}"
         request_url = self.url + endpoint
@@ -162,6 +168,8 @@ class TrelloModule:
             payload.update({"desc": desc})
         if labels_id:
             payload.update({"idLabels": labels_id})
+        if board_id:
+            payload.update({"idBoard": board_id})
         response = requests.put(request_url, data=payload)
         self.validate_response_status(response)
         return response.json()

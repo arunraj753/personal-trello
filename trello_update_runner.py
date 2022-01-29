@@ -55,19 +55,34 @@ for list_name in coderboard_backlog_lists_dict.keys():
             if label["name"] == READY_TO_COMMIT:
                 project_name = list_name.split("-Backlogs")[0]
                 project_commited_list_name = project_name + "-Committed Backlogs"
-                created_card_id = trello_.create_card(
-                    dev_board_backlog_id, card["name"]
-                )
-                trello_.add_label_to_card(
-                    created_card_id,
-                    dev_board_labels_dict[project_name],
-                )
+
+                # Modifications
                 trello_.update_card(
                     card["id"],
-                    list_id=coder_obj.lists_on_board_dict[project_commited_list_name],
-                    desc=f"linked_card:{created_card_id}",
-                    labels_id=[coder_obj.labels["orange"]],
+                    list_id=dev_board_backlog_id,
+                    labels_id=[dev_board_labels_dict[project_name]],
+                    board_id=developer_board_id,
                 )
+                trello_.create_card(
+                    coder_obj.lists_on_board_dict[project_commited_list_name],
+                    card["name"],
+                    desc=f"linked_card:{card['id']}",
+                )
+
+                # Modifications end here
+                # created_card_id = trello_.create_card(
+                #     dev_board_backlog_id, card["name"]
+                # )
+                # trello_.add_label_to_card(
+                #     created_card_id,
+                #     dev_board_labels_dict[project_name],
+                # )
+                # trello_.update_card(
+                #     card["id"],
+                #     list_id=coder_obj.lists_on_board_dict[project_commited_list_name],
+                #     desc=f"linked_card:{created_card_id}",
+                #     labels_id=[coder_obj.labels["orange"]],
+                # )
 
 dev_board_cards = trello_.get_cards_on_a_board(developer_board_id)
 
